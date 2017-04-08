@@ -1,0 +1,8 @@
+TODO
+
+ok so clipping aint doing much
+i need to make sure volumes vary across test data, keep track of seen volumes
+combine midi files into one with piano tracks
+convert to format 0
+im ready to train then
+try glorot initialisation to see how training differs.
