@@ -22,7 +22,7 @@ parser.add_argument(
 parser.add_argument(
     "-data_set",
     type=str,
-    default="genre",
+    default="test",
     help="The name of training dataset"
 )
 
