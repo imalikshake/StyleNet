@@ -17,57 +17,6 @@ class GenreLSTM(object):
         self.bi = bi
         self.one_hot = one_hot
 
-
-    def prepare_bidiretional(self, glorot=True):
-        print("[*] Preparing bidirectional dynamic RNN...")
-        self.cell_fw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
-        self.cell_fw = tf.contrib.rnn.DropoutWrapper(self.cell_fw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
-
-        self.cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
-        self.cell_bw = tf.contrib.rnn.DropoutWrapper(self.cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
-
-        self.rnn_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                                                        self.cell_fw,
-                                                        self.cell_bw,
-                                                        self.inputs,
-                                                        sequence_length=self.seq_len,
-                                                        dtype=tf.float32)
-
-
-        self.enc_outputs = tf.add(self.rnn_outputs[0], self.rnn_outputs[1])
-
-        with tf.variable_scope("encode") as scope:
-
-            self.jazz_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
-            self.jazz_outputs, self.jazz_states = tf.nn.dynamic_rnn(self.jazz_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
-
-            scope.reuse_variables()
-
-            self.classical_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
-            self.classical_outputs, self.classical_states = tf.nn.dynamic_rnn(self.classical_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
-
-        # self.cell = tf.contrib.rnn.DropoutWrapper(self.cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
-        # self.stacked_cell = tf.contrib.rnn.MultiRNNCell([self.cell] * self.num_layers)
-
-        self.jazz_B = tf.Variable(tf.random_normal([self.output_size], stddev=0.1))
-        self.classical_B = tf.Variable(tf.random_normal([self.output_size], stddev=0.1))
-
-        if glorot:
-            self.jazz_W = tf.get_variable("jazz_W", shape=[self.input_size, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
-            self.classical_W = tf.get_variable("classical_W", shape=[self.input_size, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
-        else:
-            self.jazz_W = tf.Variable(tf.random_normal([self.input_size,self.output_size], stddev=0.1))
-            self.classical_W = tf.Variable(tf.random_normal([self.input_size,self.output_size], stddev=0.1))
-
-        self.jazz_linear_out = tf.reshape(self.jazz_outputs, [tf.shape(self.true_jazz_outputs)[0]*self.seq_len[-1], self.input_size])
-        self.jazz_linear_out = tf.matmul(self.jazz_linear_out, self.jazz_W) + self.jazz_B
-        self.jazz_linear_out = tf.reshape(self.jazz_linear_out,[tf.shape(self.true_jazz_outputs)[0],tf.shape(self.true_jazz_outputs)[1], tf.shape(self.true_jazz_outputs)[2]])
-
-        self.classical_linear_out = tf.reshape(self.classical_outputs, [tf.shape(self.true_classical_outputs)[0]*self.seq_len[-1], self.input_size])
-        self.classical_linear_out = tf.matmul(self.classical_linear_out, self.classical_W) + self.classical_B
-        self.classical_linear_out = tf.reshape(self.classical_linear_out,[tf.shape(self.true_classical_outputs)[0],tf.shape(self.true_classical_outputs)[1], tf.shape(self.true_classical_outputs)[2]])
-
-
     def prepare_unidiretional(self, glorot=True):
         print("[*] Preparing unidirectional dynamic RNN...")
         self.input_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
@@ -146,11 +95,7 @@ class GenreLSTM(object):
         clipped_gradients = [(ClipIfNotNone(grad), var) for grad, var in gradients]
         return opt.apply_gradients(clipped_gradients)
 
-<<<<<<< HEAD
     def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=50):
-=======
-    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=1.0, output_keep_prob=1.0, learning_rate=0.0001, eval_epoch=50):
->>>>>>> ad54ecf61d9660a2722dd3b3777940bedb535325
 
         self.data = data
 
