@@ -20,50 +20,68 @@ class GenreLSTM(object):
 
     def prepare_bidiretional(self, glorot=True):
         print("[*] Preparing bidirectional dynamic RNN...")
-        self.cell_fw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
-        self.cell_fw = tf.contrib.rnn.DropoutWrapper(self.cell_fw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+        self.input_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
+        self.enc_outputs, self.enc_states = tf.nn.dynamic_rnn(self.input_cell, self.inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
-        self.cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
-        self.cell_bw = tf.contrib.rnn.DropoutWrapper(self.cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
 
-        self.rnn_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
-                                                        self.cell_fw,
-                                                        self.cell_bw,
-                                                        self.inputs,
+        with tf.variable_scope("encode") as scope:
+
+            self.j_cell_fw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
+            self.j_cell_fw = tf.contrib.rnn.DropoutWrapper(self.j_cell_fw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
+            self.j_cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
+            self.j_cell_bw = tf.contrib.rnn.DropoutWrapper(self.j_cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
+            # self.j_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+            (self.j_fw, self.j_bw) , _ = tf.nn.bidirectional_dynamic_rnn(
+                                                        self.j_cell_fw,
+                                                        self.j_cell_bw,
+                                                        self.enc_outputs,
                                                         sequence_length=self.seq_len,
                                                         dtype=tf.float32)
 
 
-        self.enc_outputs = tf.add(self.rnn_outputs[0], self.rnn_outputs[1])
-
-        with tf.variable_scope("encode") as scope:
-
-            self.jazz_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
-            self.jazz_outputs, self.jazz_states = tf.nn.dynamic_rnn(self.jazz_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
+            self.jazz_outputs  = tf.concat([self.j_fw, self.j_bw],2)
+            # self.jazz_outputs = tf.add(self.j_outputs[0], self.j_outputs[1])
 
             scope.reuse_variables()
 
-            self.classical_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
-            self.classical_outputs, self.classical_states = tf.nn.dynamic_rnn(self.classical_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
 
-        # self.cell = tf.contrib.rnn.DropoutWrapper(self.cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
-        # self.stacked_cell = tf.contrib.rnn.MultiRNNCell([self.cell] * self.num_layers)
+            self.c_cell_fw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
+            self.c_cell_fw = tf.contrib.rnn.DropoutWrapper(self.c_cell_fw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
+            self.c_cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
+            self.c_cell_bw = tf.contrib.rnn.DropoutWrapper(self.c_cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
+            (self.c_fw, self.c_bw), _ =  tf.nn.bidirectional_dynamic_rnn(
+            # self.c_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
+                                                        self.c_cell_fw,
+                                                        self.c_cell_bw,
+                                                        self.enc_outputs,
+                                                        sequence_length=self.seq_len,
+                                                        dtype=tf.float32)
+
+
+            self.classical_outputs  = tf.concat([self.c_fw, self.c_bw],2)
+
+            # self.classical_outputs = tf.add(self.c_outputs[0], self.c_outputs[1])
+
 
         self.jazz_B = tf.Variable(tf.random_normal([self.output_size], stddev=0.1))
         self.classical_B = tf.Variable(tf.random_normal([self.output_size], stddev=0.1))
 
         if glorot:
-            self.jazz_W = tf.get_variable("jazz_W", shape=[self.input_size, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
-            self.classical_W = tf.get_variable("classical_W", shape=[self.input_size, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
+            self.jazz_W = tf.get_variable("jazz_W", shape=[self.input_size*2, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
+            self.classical_W = tf.get_variable("classical_W", shape=[self.input_size*2, self.output_size],initializer=tf.contrib.layers.xavier_initializer())
         else:
-            self.jazz_W = tf.Variable(tf.random_normal([self.input_size,self.output_size], stddev=0.1))
-            self.classical_W = tf.Variable(tf.random_normal([self.input_size,self.output_size], stddev=0.1))
+            self.jazz_W = tf.Variable(tf.random_normal([self.input_size*2,self.output_size], stddev=0.1))
+            self.classical_W = tf.Variable(tf.random_normal([self.input_size*2,self.output_size], stddev=0.1))
 
-        self.jazz_linear_out = tf.reshape(self.jazz_outputs, [tf.shape(self.true_jazz_outputs)[0]*self.seq_len[-1], self.input_size])
+        self.jazz_linear_out = tf.reshape(self.jazz_outputs, [tf.shape(self.true_jazz_outputs)[0]*self.seq_len[-1], 2*self.input_size])
         self.jazz_linear_out = tf.matmul(self.jazz_linear_out, self.jazz_W) + self.jazz_B
         self.jazz_linear_out = tf.reshape(self.jazz_linear_out,[tf.shape(self.true_jazz_outputs)[0],tf.shape(self.true_jazz_outputs)[1], tf.shape(self.true_jazz_outputs)[2]])
 
-        self.classical_linear_out = tf.reshape(self.classical_outputs, [tf.shape(self.true_classical_outputs)[0]*self.seq_len[-1], self.input_size])
+        self.classical_linear_out = tf.reshape(self.classical_outputs, [tf.shape(self.true_classical_outputs)[0]*self.seq_len[-1], 2*self.input_size])
         self.classical_linear_out = tf.matmul(self.classical_linear_out, self.classical_W) + self.classical_B
         self.classical_linear_out = tf.reshape(self.classical_linear_out,[tf.shape(self.true_classical_outputs)[0],tf.shape(self.true_classical_outputs)[1], tf.shape(self.true_classical_outputs)[2]])
 
@@ -71,6 +89,7 @@ class GenreLSTM(object):
     def prepare_unidiretional(self, glorot=True):
         print("[*] Preparing unidirectional dynamic RNN...")
         self.input_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
+        self.input_cell = tf.contrib.rnn.DropoutWrapper(self.input_cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
         self.enc_outputs, self.enc_states = tf.nn.dynamic_rnn(self.input_cell, self.inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
         with tf.variable_scope("encode") as scope:
