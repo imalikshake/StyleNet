@@ -95,7 +95,7 @@ class GenreLSTM(object):
         clipped_gradients = [(ClipIfNotNone(grad), var) for grad, var in gradients]
         return opt.apply_gradients(clipped_gradients)
 
-    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=801, input_keep_prob=1.0, output_keep_prob=1.0, learning_rate=0.0001, eval_epoch=50):
+    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=50):
 
         self.data = data
 
