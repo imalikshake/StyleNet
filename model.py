@@ -226,9 +226,10 @@ class GenreLSTM(object):
                 input_len = len(loaded)
                 input_len = [input_len] * len(in_list)
 
-                c_error, c_out, j_out, summary = self.sess.run([self.classical_loss,
+                c_error, c_out, j_out, e_out, summary = self.sess.run([self.classical_loss,
                                                   self.classical_linear_out,
                                                   self.jazz_linear_out,
+                                                  self.enc_outputs,
                                                   self.summary_op],
 
                                                 feed_dict={self.inputs:in_list,
@@ -240,7 +241,7 @@ class GenreLSTM(object):
 
                 c_eval_loss += c_error
 
-                self.plot_evaluation(epoch, filename, c_out, j_out, out_list)
+                self.plot_evaluation(epoch, filename, c_out, j_out, e_out, out_list)
                 # if pred_save:
                 #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
                 #     np.save(predicted, linear[-1])
@@ -271,9 +272,10 @@ class GenreLSTM(object):
                 input_len = len(loaded)
                 input_len = [input_len] * len(in_list)
 
-                j_error, j_out, c_out, summary = self.sess.run([self.jazz_loss,
+                j_error, j_out, c_out, e_out, summary = self.sess.run([self.jazz_loss,
                                                   self.jazz_linear_out,
                                                   self.classical_linear_out,
+                                                  self.enc_outputs,
                                                   self.summary_op],
 
                                                 feed_dict={self.inputs:in_list,
@@ -285,7 +287,7 @@ class GenreLSTM(object):
 
                 j_eval_loss += j_error
 
-                self.plot_evaluation(epoch, filename, c_out, j_out, out_list)
+                self.plot_evaluation(epoch, filename, c_out, j_out, e_out, out_list)
                 # if pred_save:
                 #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
                 #     np.save(predicted, linear[-1])
@@ -297,26 +299,34 @@ class GenreLSTM(object):
 
         self.test_writer.add_summary(summary, epoch)
 
-    def plot_evaluation(self, epoch, filename, c_out, j_out, out_list ):
+    def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list):
         fig = plt.figure(figsize=(12,10), dpi=100)
         fig.suptitle(filename, fontsize=10, fontweight='bold')
 
-        graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120]
+        graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120, e_out[-1]]
         plots = len(graph_items)
-        cmap = ['jet', 'jet', 'jet']
-        vmin = [0,0,0]
-        vmax = [120,120,120]
-        names = ["Actual", "Classical", "Jazz"]
+        cmap = ['jet', 'jet', 'jet', 'bwr']
+        vmin = [0,0,0,-1]
+        vmax = [120,120,120, 1]
+        names = ["Actual", "Classical", "Jazz", "Encoded"]
+
+
         for i in xrange(0, plots):
             fig.add_subplot(1,plots,i+1)
             plt.imshow(graph_items[i], vmin=vmin[i], vmax=vmax[i], cmap=cmap[i], aspect='auto')
+
             a = plt.colorbar(aspect=80)
             a.ax.tick_params(labelsize=8)
             ax = plt.gca()
             ax.xaxis.tick_top()
+
+            if i == 0:
+                ax.set_ylabel('Time Step')
+            ax.xaxis.set_label_position('top')
             ax.tick_params(axis='both', labelsize=8)
-            ax.set_title(names[i])
-            plt.tight_layout()
+            fig.subplots_adjust(top=0.85)
+            ax.set_title(names[i], y=1.09)
+            # plt.tight_layout()
 
         if self.one_hot:
             plt.xlim(0,88)
