@@ -4,6 +4,7 @@ import os
 import numpy as np
 from model import GenreLSTM
 
+
 parser = argparse.ArgumentParser(description='How to run this')
 
 parser.add_argument(
@@ -22,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "-data_set",
     type=str,
-    default="test",
+    default="train",
     help="The name of training dataset"
 )
 
@@ -57,6 +58,11 @@ parser.add_argument(
     help="Model to load"
 )
 
+parser.add_argument(
+    "-load_last",
+    action='store_true',
+    help="True for forward only, False for training [False]"
+)
 
 args = parser.parse_args()
 
@@ -184,6 +190,18 @@ def main():
             print("[*] Loading " + args.load_model + " and continuing from " + loaded_epoch + ".")
             loaded_epoch = int(loaded_epoch)
             network.train(data, model=args.load_model, starting_epoch=loaded_epoch+1)
+        elif args.load_last:
+            files = [(file.split('.')[0].split('-')[-1], file.split('.')[0]) for file in os.listdir(dirs["model_path"])]
+            files.sort(key = lambda t: t[0]))
+            last = files[0][1]
+            last = last + ".ckpt"
+            loaded_epoch = files[0][0][1:]
+            # loaded_epoch = last.split('-')[-1]
+            # loaded_epoch = loaded_epoch[1:]
+            # last = last + ".ckpt"
+            print("[*] Loading " + last + " and continuing from " + loaded_epoch + ".")
+            loaded_epoch = int(loaded_epoch)
+            # network.train(data, model=last, starting_epoch=loaded_epoch+1)
         else:
             network.train(data)
     else:

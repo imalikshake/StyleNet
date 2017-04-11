@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 matplotlib.pyplot.ioff()
 
 class GenreLSTM(object):
-    def __init__(self, dirs, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=1, batch_count=32):
+    def __init__(self, dirs, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=1, batch_count=16):
         self.input_size = int(input_size)
         self.output_size = int(output_size)
         self.num_layers = int(num_layers)
@@ -21,6 +21,7 @@ class GenreLSTM(object):
     def prepare_bidiretional(self, glorot=True):
         print("[*] Preparing bidirectional dynamic RNN...")
         self.input_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
+        self.input_cell = tf.contrib.rnn.DropoutWrapper(self.input_cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
         self.enc_outputs, self.enc_states = tf.nn.dynamic_rnn(self.input_cell, self.inputs, sequence_length=self.seq_len, dtype=tf.float32)
 
 
@@ -94,11 +95,14 @@ class GenreLSTM(object):
         with tf.variable_scope("encode") as scope:
 
             self.jazz_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
+            self.jazz_cell = tf.contrib.rnn.DropoutWrapper(self.jazz_cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
             self.jazz_outputs, self.jazz_states = tf.nn.dynamic_rnn(self.jazz_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
 
             scope.reuse_variables()
 
             self.classical_cell = tf.contrib.rnn.LSTMCell(self.input_size, forget_bias=1.0)
+            self.classical_cell = tf.contrib.rnn.DropoutWrapper(self.classical_cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
             self.classical_outputs, self.classical_states = tf.nn.dynamic_rnn(self.classical_cell, self.enc_outputs, sequence_length=self.seq_len, dtype=tf.float32)
 
         # self.cell = tf.contrib.rnn.DropoutWrapper(self.cell, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
@@ -164,7 +168,7 @@ class GenreLSTM(object):
         clipped_gradients = [(ClipIfNotNone(grad), var) for grad, var in gradients]
         return opt.apply_gradients(clipped_gradients)
 
-    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=50):
+    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=10):
 
         self.data = data
 
@@ -173,6 +177,8 @@ class GenreLSTM(object):
         else:
             jazz_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.jazz_loss)
             classical_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.classical_loss)
+
+
 
         self.sess = tf.Session()
 
@@ -404,4 +410,4 @@ class GenreLSTM(object):
 
         out_png = os.path.join(self.dirs['png_path'], filename.split('.')[0] + "-e%d" % (epoch)+".png")
         plt.savefig(out_png, bbox_inches='tight')
-        plt.close(f
+        plt.close(fig)
