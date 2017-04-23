@@ -8,13 +8,14 @@ import matplotlib.pyplot as plt
 matplotlib.pyplot.ioff()
 
 class GenreLSTM(object):
-    def __init__(self, dirs, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=1, batch_count=16):
+    def __init__(self, dirs, mini=False, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=1, batch_count=16):
         self.input_size = int(input_size)
         self.output_size = int(output_size)
         self.num_layers = int(num_layers)
         self.batch_count = int(batch_count)
         self.dirs = dirs
         self.bi = bi
+        self.mini = mini
         self.one_hot = one_hot
 
 
@@ -167,7 +168,7 @@ class GenreLSTM(object):
         return opt.apply_gradients(gradients)
 
     def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.005, eval_epoch=10, save_epoch=1):
-        self.mini_len = 150
+
         self.data = data
 
         if clip_grad:
@@ -191,8 +192,8 @@ class GenreLSTM(object):
         self.train_writer = tf.summary.FileWriter(os.path.join(self.dirs['logs_path'], 'train'), graph=self.sess.graph_def)
         self.test_writer = tf.summary.FileWriter(os.path.join(self.dirs['logs_path'], 'test'), graph=self.sess.graph_def)
 
-        classical_batcher = BatchGenerator(self.data["classical"]["X"], self.data["classical"]["Y"], self.batch_count, self.input_size, self.output_size)
-        jazz_batcher = BatchGenerator(self.data["jazz"]["X"], self.data["jazz"]["Y"], self.batch_count, self.input_size, self.output_size)
+        classical_batcher = BatchGenerator(self.data["classical"]["X"], self.data["classical"]["Y"], self.batch_count, self.input_size, self.output_size, self.mini)
+        jazz_batcher = BatchGenerator(self.data["jazz"]["X"], self.data["jazz"]["Y"], self.batch_count, self.input_size, self.output_size, self.mini)
 
         classical_generator = classical_batcher.batch()
         jazz_generator = jazz_batcher.batch()

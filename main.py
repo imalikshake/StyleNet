@@ -40,6 +40,11 @@ parser.add_argument(
     action='store_true'
 )
 parser.add_argument(
+    "-mini",
+    help="False for Unidirectional [False]",
+    action='store_true'
+)
+parser.add_argument(
     "-one_hot",
     help="False for float input [False]",
     action='store_true'
@@ -178,7 +183,7 @@ def main():
     else:
         input_size = 128
 
-    network  = GenreLSTM(dirs, input_size=input_size, bi=args.bi)
+    network  = GenreLSTM(dirs, input_size=input_size, mini=args.mini, bi=args.bi)
     network.prepare_model()
 
 
