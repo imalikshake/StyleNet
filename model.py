@@ -156,24 +156,23 @@ class GenreLSTM(object):
         tf.summary.histogram("Jazz negation", self.jazz_negation)
         tf.summary.histogram("Classical negation", self.classical_negation)
 
-    def clip_optimizer(self, learning_rate):
+    def clip_optimizer(self, learning_rate, loss):
         opt = tf.train.AdamOptimizer(learning_rate)
-        gradients = opt.compute_gradients(self.loss)
+        gradients = opt.compute_gradients(loss)
 
-        def ClipIfNotNone(grad):
-            if grad is None:
-                return grad
-            return tf.clip_by_value(grad, -1, 1)
+        for i, (grad, var) in enumerate(gradients):
+            if grad is not None:
+                gradients[i] = (tf.clip_by_norm(grad, 10), var)
 
-        clipped_gradients = [(ClipIfNotNone(grad), var) for grad, var in gradients]
-        return opt.apply_gradients(clipped_gradients)
+        return opt.apply_gradients(gradients)
 
-    def train(self, data, model=None, starting_epoch=0, clip_grad=False, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=10):
-
+    def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.005, eval_epoch=10, save_epoch=1):
+        self.mini_len = 150
         self.data = data
 
         if clip_grad:
-            optimizer = self.clip_optimizer(learning_rate)
+            jazz_optimizer = self.clip_optimizer(learning_rate,self.jazz_loss)
+            classical_optimizer = self.clip_optimizer(learning_rate,self.classical_loss)
         else:
             jazz_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.jazz_loss)
             classical_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(self.classical_loss)
@@ -209,7 +208,7 @@ class GenreLSTM(object):
             for batch in range(classical_batcher.batch_count):
                 batch_X, batch_Y, batch_len = classical_generator.next()
                 batch_len = [batch_len] * len(batch_X)
-                epoch_error, summary, _  =  self.sess.run([self.classical_loss,
+                epoch_error, classical_summary, _  =  self.sess.run([self.classical_loss,
                                                          self.summary_op,
                                                          classical_optimizer,
                                                          ], feed_dict={ self.inputs: batch_X,
@@ -224,7 +223,7 @@ class GenreLSTM(object):
 
                 batch_X, batch_Y, batch_len = jazz_generator.next()
                 batch_len = [batch_len] * len(batch_X)
-                epoch_error, summary, _  =  self.sess.run([self.jazz_loss,
+                epoch_error, jazz_summary, _  =  self.sess.run([self.jazz_loss,
                                                          self.summary_op,
                                                          jazz_optimizer,
                                                          ], feed_dict={ self.inputs: batch_X,
@@ -236,17 +235,16 @@ class GenreLSTM(object):
                 jazz_epoch_avg += epoch_error
                 print("\tBatch %d/%d, Training MSE for Jazz batch: %.9f" % (batch+1, jazz_batcher.batch_count, epoch_error))
 
-
+                self.train_writer.add_summary(classical_summary, epoch*classical_batcher.batch_count + epoch)
+                self.train_writer.add_summary(jazz_summary, epoch*jazz_batcher.batch_count + epoch)
 
             print("[*] Average Training MSE for Classical epoch %d: %.9f" % (epoch, classical_epoch_avg/classical_batcher.batch_count))
             print("[*] Average Training MSE for Jazz epoch %d: %.9f" % (epoch, jazz_epoch_avg/jazz_batcher.batch_count))
 
-            print("[*] Average Training MSE for Overall epoch %d: %.9f" % (epoch, classical_epoch_avg+jazz_epoch_avg/2*classical_batcher.batch_count))
 
-            self.train_writer.add_summary(summary, epoch)
-
-            if epoch % eval_epoch == 0 :
+            if epoch % save_epoch == 0 :
                 self.save(epoch)
+            if epoch % eval_epoch == 0 :
                 self.evaluate(epoch)
 
         print("[*] Training complete.")
@@ -375,15 +373,15 @@ class GenreLSTM(object):
         self.test_writer.add_summary(summary, epoch)
 
     def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list):
-        fig = plt.figure(figsize=(12,10), dpi=100)
+        fig = plt.figure(figsize=(13,11), dpi=120)
         fig.suptitle(filename, fontsize=10, fontweight='bold')
 
-        graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120, e_out[-1]]
+        graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120,  (c_out[-1]-j_out[-1])*120 , e_out[-1]]
         plots = len(graph_items)
-        cmap = ['jet', 'jet', 'jet', 'bwr']
-        vmin = [0,0,0,-1]
-        vmax = [120,120,120, 1]
-        names = ["Actual", "Classical", "Jazz", "Encoded"]
+        cmap = ['jet', 'jet', 'jet', 'jet', 'bwr']
+        vmin = [0,0,0,-10,-1]
+        vmax = [120,120,120,10,1]
+        names = ["Actual", "Classical", "Jazz", "Difference", "Encoded"]
 
 
         for i in xrange(0, plots):
