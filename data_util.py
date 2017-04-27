@@ -1,7 +1,7 @@
 import numpy as np
 
 class BatchGenerator(object):
-    def __init__(self, data_x, data_y, batch_size, input_size, output_size):
+    def __init__(self, data_x, data_y, batch_size, input_size, output_size, mini, mini_len=200):
         self.input_size = input_size
         self.output_size = output_size
         self.data_x = data_x
@@ -9,6 +9,8 @@ class BatchGenerator(object):
         self.batch_size = batch_size
         self.batch_count = len(range(0, len(self.data_x), self.batch_size))
         self.batch_length = None
+        self.mini = mini
+        self.mini_len = mini_len
 
     def batch(self):
         while True:
@@ -52,8 +54,18 @@ class BatchGenerator(object):
                 a.append(padding_X)
                 b.append(padding_Y)
                 length+=1
+
+            if self.mini:
+                while length % self.mini_len != 0:
+                    a.append(padding_X)
+                    b.append(padding_Y)
+                    length+=1
+
             sequence_X[i] = np.array(a)
             sequence_Y[i] = np.array(b)
+            # for x in minis:
+            #     mini_X.append(np.array(a[x:min(x+self.mini,x)]))
+            #     mini_Y.append(np.array(b[x:min(x+self.mini,x)]))
             # print sequence_X[i].shape
             # print sequence_Y[i].shape
 
@@ -63,7 +75,14 @@ class BatchGenerator(object):
         sequence_X = np.vstack([np.expand_dims(x, 1) for x in sequence_X])
         sequence_Y = np.vstack([np.expand_dims(y, 1) for y in sequence_Y])
 
-        sequence_X = np.reshape(sequence_X, [current_batch, max_lens, self.input_size])
-        sequence_Y = np.reshape(sequence_Y, [current_batch, max_lens, self.output_size])
+        if not self.mini:
+            mini_batches = 1
+            max_lens = max(lens)
+        else:
+            mini_batches = length/self.mini_len
+            max_lens = self.mini_len
+
+        sequence_X = np.reshape(sequence_X, [current_batch*mini_batches, max_lens, self.input_size])
+        sequence_Y = np.reshape(sequence_Y, [current_batch*mini_batches, max_lens, self.output_size])
 
         return sequence_X, sequence_Y, max_lens

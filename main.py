@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "-data_set",
     type=str,
-    default="test",
+    default="train",
     help="The name of training dataset"
 )
 
@@ -36,6 +36,11 @@ parser.add_argument(
 
 parser.add_argument(
     "-bi",
+    help="False for Unidirectional [False]",
+    action='store_true'
+)
+parser.add_argument(
+    "-mini",
     help="False for Unidirectional [False]",
     action='store_true'
 )
@@ -178,7 +183,7 @@ def main():
     else:
         input_size = 128
 
-    network  = GenreLSTM(dirs, input_size=input_size, bi=args.bi)
+    network  = GenreLSTM(dirs, input_size=input_size, mini=args.mini, bi=args.bi)
     network.prepare_model()
 
 
@@ -191,17 +196,18 @@ def main():
             loaded_epoch = int(loaded_epoch)
             network.train(data, model=args.load_model, starting_epoch=loaded_epoch+1)
         elif args.load_last:
-            files = [(file.split('.')[0].split('-')[-1], file.split('.')[0]) for file in os.listdir(dirs["model_path"])]
+            tree = os.listdir(dirs["model_path"])
+            tree.remove('checkpoint')
+            files = [(int(file.split('.')[0].split('-')[-1][1:]), file.split('.')[0]) for file in tree]
             files.sort(key = lambda t: t[0])
             print files
             last = files[-1][1]
             last = last + ".ckpt"
-            loaded_epoch = files[-1][0][1:]
+            loaded_epoch = files[-1][0]
             # loaded_epoch = last.split('-')[-1]
             # loaded_epoch = loaded_epoch[1:]
             # last = last + ".ckpt"
-            print("[*] Loading " + last + " and continuing from " + loaded_epoch + ".")
-            loaded_epoch = int(loaded_epoch)
+            print("[*] Loading " + last + " and continuing from " + str(loaded_epoch) + ".")
             network.train(data, model=last, starting_epoch=loaded_epoch+1)
         else:
             network.train(data)
