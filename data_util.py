@@ -1,7 +1,7 @@
 import numpy as np
 
 class BatchGenerator(object):
-    def __init__(self, data_x, data_y, batch_size, input_size, output_size, mini, mini_len=200):
+    def __init__(self, data_x, data_y, batch_size, input_size, output_size, mini=True, mini_len=200):
         self.input_size = input_size
         self.output_size = output_size
         self.data_x = data_x
@@ -11,6 +11,7 @@ class BatchGenerator(object):
         self.batch_length = None
         self.mini = mini
         self.mini_len = mini_len
+
 
     def batch(self):
         while True:

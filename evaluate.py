@@ -8,14 +8,7 @@ import matplotlib.pyplot as plt
 from midi_util import *
 import os
 import sys
-from sklearn.preprocessing import MinMaxScaler
 
-model_path = "./runs/third_run/model"
-x_path = "./runs/third_run/inputs"
-y_path = "./runs/third_run/velocities"
-pred_path = "./runs/third_run/predictions"
-
-scaler =  MinMaxScaler(feature_range=(-1,1))
 
 # input_size = lstm_size = 128
 # num_layers = 2

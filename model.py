@@ -167,7 +167,7 @@ class GenreLSTM(object):
 
         return opt.apply_gradients(gradients)
 
-    def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.005, eval_epoch=10, save_epoch=1):
+    def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=10, save_epoch=1):
 
         self.data = data
 
@@ -182,6 +182,9 @@ class GenreLSTM(object):
 
         self.sess = tf.Session()
 
+        self.c_in_list, self.c_out_list,self.c_input_lens, self.c_files = self.eval_set('classical')
+        self.j_in_list, self.j_out_list,self.j_input_lens, self.j_files = self.eval_set('jazz')
+
         if model:
             self.load(model)
         else:
@@ -192,8 +195,15 @@ class GenreLSTM(object):
         self.train_writer = tf.summary.FileWriter(os.path.join(self.dirs['logs_path'], 'train'), graph=self.sess.graph_def)
         self.test_writer = tf.summary.FileWriter(os.path.join(self.dirs['logs_path'], 'test'), graph=self.sess.graph_def)
 
-        classical_batcher = BatchGenerator(self.data["classical"]["X"], self.data["classical"]["Y"], self.batch_count, self.input_size, self.output_size, self.mini)
-        jazz_batcher = BatchGenerator(self.data["jazz"]["X"], self.data["jazz"]["Y"], self.batch_count, self.input_size, self.output_size, self.mini)
+        classical_batcher = BatchGenerator(self.data["classical"]["X"], self.data["classical"]["Y"], self.batch_count, self.input_size, self.output_size, mini=self.mini)
+        jazz_batcher = BatchGenerator(self.data["jazz"]["X"], self.data["jazz"]["Y"], self.batch_count, self.input_size, self.output_size, mini=self.mini)
+
+        self.v_classical_batcher = self.validate("classical")
+        self.v_classical_batcher = self.v_classical_batcher.batch()
+
+        self.v_jazz_batcher = self.validate("jazz")
+        self.v_jazz_batcher = self.v_jazz_batcher.batch()
+
 
         classical_generator = classical_batcher.batch()
         jazz_generator = jazz_batcher.batch()
@@ -238,6 +248,7 @@ class GenreLSTM(object):
 
                 self.train_writer.add_summary(classical_summary, epoch*classical_batcher.batch_count + epoch)
                 self.train_writer.add_summary(jazz_summary, epoch*jazz_batcher.batch_count + epoch)
+                self.validation(epoch)
 
             print("[*] Average Training MSE for Classical epoch %d: %.9f" % (epoch, classical_epoch_avg/classical_batcher.batch_count))
             print("[*] Average Training MSE for Jazz epoch %d: %.9f" % (epoch, jazz_epoch_avg/jazz_batcher.batch_count))
@@ -250,7 +261,7 @@ class GenreLSTM(object):
 
         print("[*] Training complete.")
 
-    def load(self, model_name):
+    def load(self, model_name, path=self.dirs['model_path']):
         print(" [*] Loading checkpoint...")
         self.saver = tf.train.Saver(max_to_keep=0)
         self.saver.restore(self.sess, os.path.join(self.dirs['model_path'], model_name))
@@ -262,8 +273,7 @@ class GenreLSTM(object):
         save_path = self.saver.save(self.sess, os.path.join(self.dirs['model_path'], model_name))
         print("[*] Model saved in file: %s" % save_path)
 
-    def evaluate(self, epoch, pred_save=False):
-
+    def validate(self, type):
         input_eval_path = os.path.join(self.dirs['eval_path'], "inputs")
         vel_eval_path = os.path.join(self.dirs['eval_path'], "velocities")
 
@@ -273,17 +283,26 @@ class GenreLSTM(object):
         j_input_eval_path = os.path.join(input_eval_path, "jazz")
         j_vel_eval_path = os.path.join(vel_eval_path, "jazz")
 
-        input_folder = os.listdir(c_input_eval_path)
-        file_count = len(input_folder)
+        if type == "classical":
+            input_folder = os.listdir(c_input_eval_path)
+            file_count = len(input_folder)
+            vel_eval_path = c_vel_eval_path
+            input_eval_path = c_input_eval_path
+        else:
+            input_folder = os.listdir(j_input_eval_path)
+            file_count = len(input_folder)
+            vel_eval_path = j_vel_eval_path
+            input_eval_path = j_input_eval_path
+            #CLASSICS
 
-        c_eval_loss = 0
-        j_eval_loss = 0
-        #CLASSICS
+        in_list = []
+        out_list = []
+        filenames = []
         for i, filename in enumerate(input_folder):
             if filename.split('.')[-1] == 'npy':
 
-                vel_path = os.path.join(c_vel_eval_path, filename)
-                input_path = os.path.join(c_input_eval_path, filename)
+                vel_path = os.path.join(vel_eval_path, filename)
+                input_path = os.path.join(input_eval_path, filename)
 
                 true_vel = np.load(vel_path)/120
                 loaded = np.load(input_path)
@@ -291,45 +310,94 @@ class GenreLSTM(object):
                 if not self.one_hot:
                     loaded = loaded/2
 
-                in_list = []
-                out_list = []
-
                 in_list.append(loaded)
                 out_list.append(true_vel)
+                filenames.append(filename)
+        valid_generator = BatchGenerator(in_list, out_list, self.batch_count, self.input_size, self.output_size, mini=False)
+        return valid_generator
 
-                input_len = len(loaded)
-                input_len = [input_len] * len(in_list)
+    def validation(self, epoch, pred_save=False):
 
-                c_error, c_out, j_out, e_out, summary = self.sess.run([self.classical_loss,
-                                                  self.classical_linear_out,
-                                                  self.jazz_linear_out,
-                                                  self.enc_outputs,
-                                                  self.summary_op],
+        in_list, out_list, input_len = self.v_classical_batcher.next()
+        input_len = [input_len] * len(in_list)
+        c_error, c_out, j_out, e_out, c_summary = self.sess.run([self.classical_loss,
+                                          self.classical_linear_out,
+                                          self.jazz_linear_out,
+                                          self.enc_outputs,
+                                          self.summary_op],
 
-                                                feed_dict={self.inputs:in_list,
-                                                           self.seq_len:input_len,
-                                                           self.input_keep_prob:1.0,
-                                                           self.output_keep_prob:1.0,
-                                                           self.true_classical_outputs:out_list,
-                                                           self.true_jazz_outputs:out_list})
-
-                c_eval_loss += c_error
-
-                self.plot_evaluation(epoch, filename, c_out, j_out, e_out, out_list)
-                # if pred_save:
-                #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
-                #     np.save(predicted, linear[-1])
+                                        feed_dict={self.inputs:in_list,
+                                                   self.seq_len:input_len,
+                                                   self.input_keep_prob:1.0,
+                                                   self.output_keep_prob:1.0,
+                                                   self.true_classical_outputs:out_list,
+                                                   self.true_jazz_outputs:out_list})
 
 
-        input_folder = os.listdir(j_input_eval_path)
-        file_count = len(input_folder)
+        # for i, x in enumerate(c_out):
+            # self.plot_evaluation(epoch, c_files[i], c_out[i], j_out[i], e_out[i], out_list[i])
 
-        #JAZZ
+        in_list, out_list, input_len = self.v_jazz_batcher.next()
+        input_len = [input_len] * len(in_list)
+
+        j_error, j_out, c_out, e_out, j_summary = self.sess.run([self.jazz_loss,
+                                          self.jazz_linear_out,
+                                          self.classical_linear_out,
+                                          self.enc_outputs,
+                                          self.summary_op],
+
+                                        feed_dict={self.inputs:in_list,
+                                                   self.seq_len:input_len,
+                                                   self.input_keep_prob:1.0,
+                                                   self.output_keep_prob:1.0,
+                                                   self.true_jazz_outputs:out_list,
+                                                   self.true_classical_outputs:out_list})
+
+
+        # for i, x in enumerate(c_out):
+            # self.plot_evaluation(epoch, j_files[i], c_out[i], j_out[i], e_out[i], out_list[i])
+
+        # print("[*] Validating Model...")
+
+        # print("[*] Average Test MSE for Classical epoch %d: %.9f" % (epoch, c_error))
+        # print("[*] Average Test MSE for Jazz epoch %d: %.9f" % (epoch, j_error))
+
+
+        self.test_writer.add_summary(j_summary, epoch)
+        self.test_writer.add_summary(c_summary, epoch)
+
+    def eval_set(self, type):
+        input_eval_path = os.path.join(self.dirs['eval_path'], "inputs")
+        vel_eval_path = os.path.join(self.dirs['eval_path'], "velocities")
+
+        c_input_eval_path = os.path.join(input_eval_path, "classical")
+        c_vel_eval_path = os.path.join(vel_eval_path, "classical")
+
+        j_input_eval_path = os.path.join(input_eval_path, "jazz")
+        j_vel_eval_path = os.path.join(vel_eval_path, "jazz")
+
+        if type == "classical":
+            input_folder = os.listdir(c_input_eval_path)
+            file_count = len(input_folder)
+            vel_eval_path = c_vel_eval_path
+            input_eval_path = c_input_eval_path
+        else:
+            input_folder = os.listdir(j_input_eval_path)
+            file_count = len(input_folder)
+            vel_eval_path = j_vel_eval_path
+            input_eval_path = j_input_eval_path
+            #CLASSICS
+
+        in_list = []
+        out_list = []
+        filenames = []
+        input_lens = []
+
         for i, filename in enumerate(input_folder):
             if filename.split('.')[-1] == 'npy':
 
-                vel_path = os.path.join(j_vel_eval_path, filename)
-                input_path = os.path.join(j_input_eval_path, filename)
+                vel_path = os.path.join(vel_eval_path, filename)
+                input_path = os.path.join(input_eval_path, filename)
 
                 true_vel = np.load(vel_path)/120
                 loaded = np.load(input_path)
@@ -337,44 +405,57 @@ class GenreLSTM(object):
                 if not self.one_hot:
                     loaded = loaded/2
 
-                in_list = []
-                out_list = []
+                in_list.append([loaded])
+                out_list.append([true_vel])
+                filenames.append(filename)
+                input_len = [len(loaded)]
+                input_lens.append(input_len)
 
-                in_list.append(loaded)
-                out_list.append(true_vel)
+        return in_list, out_list, input_lens, filenames
 
-                input_len = len(loaded)
-                input_len = [input_len] * len(in_list)
+    def evaluate(self, epoch, pred_save=False):
+        for i, filename in enumerate(self.c_files):
+            c_error, c_out, j_out, e_out, summary = self.sess.run([self.classical_loss,
+                                              self.classical_linear_out,
+                                              self.jazz_linear_out,
+                                              self.enc_outputs,
+                                              self.summary_op],
 
-                j_error, j_out, c_out, e_out, summary = self.sess.run([self.jazz_loss,
-                                                  self.jazz_linear_out,
-                                                  self.classical_linear_out,
-                                                  self.enc_outputs,
-                                                  self.summary_op],
+                                            feed_dict={self.inputs:self.c_in_list[i],
+                                                       self.seq_len:self.c_input_lens[i],
+                                                       self.input_keep_prob:1.0,
+                                                       self.output_keep_prob:1.0,
+                                                       self.true_classical_outputs:self.c_out_list[i],
+                                                       self.true_jazz_outputs:self.c_out_list[i]})
 
-                                                feed_dict={self.inputs:in_list,
-                                                           self.seq_len:input_len,
-                                                           self.input_keep_prob:1.0,
-                                                           self.output_keep_prob:1.0,
-                                                           self.true_jazz_outputs:out_list,
-                                                           self.true_classical_outputs:out_list})
 
-                j_eval_loss += j_error
-
-                self.plot_evaluation(epoch, filename, c_out, j_out, e_out, out_list)
+            self.plot_evaluation(epoch, filename, c_out, j_out, e_out, self.c_out_list[i])
                 # if pred_save:
                 #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
                 #     np.save(predicted, linear[-1])
 
-        print("[*] Classical Model evaluated.")
-        print("[*] Average Test MSE for Classical epoch %d: %.9f" % (epoch, c_eval_loss/file_count))
-        print("[*] Average Test MSE for Jazz epoch %d: %.9f" % (epoch, j_eval_loss/file_count))
-        print("[*] Average Test MSE for Overal epoch %d: %.9f" % (epoch, j_eval_loss+c_eval_loss/2*file_count))
+        for i, filename in enumerate(self.j_files):
+            j_error, j_out, c_out, e_out, summary = self.sess.run([self.jazz_loss,
+                                              self.jazz_linear_out,
+                                              self.classical_linear_out,
+                                              self.enc_outputs,
+                                              self.summary_op],
 
-        self.test_writer.add_summary(summary, epoch)
+                                            feed_dict={self.inputs:self.j_in_list[i],
+                                                       self.seq_len:self.j_input_lens[i],
+                                                       self.input_keep_prob:1.0,
+                                                       self.output_keep_prob:1.0,
+                                                       self.true_classical_outputs:self.j_out_list[i],
+                                                       self.true_jazz_outputs:self.j_out_list[i]})
+
+            self.plot_evaluation(epoch, filename, c_out, j_out, e_out, self.j_out_list[i])
+                # if pred_save:
+                #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
+                #     np.save(predicted, linear[-1])
+
 
     def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list):
-        fig = plt.figure(figsize=(13,11), dpi=120)
+        fig = plt.figure(figsize=(14,11), dpi=120)
         fig.suptitle(filename, fontsize=10, fontweight='bold')
 
         graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120,  (c_out[-1]-j_out[-1])*120 , e_out[-1]]
@@ -390,14 +471,14 @@ class GenreLSTM(object):
             plt.imshow(graph_items[i], vmin=vmin[i], vmax=vmax[i], cmap=cmap[i], aspect='auto')
 
             a = plt.colorbar(aspect=80)
-            a.ax.tick_params(labelsize=8)
+            a.ax.tick_params(labelsize=7)
             ax = plt.gca()
             ax.xaxis.tick_top()
 
             if i == 0:
                 ax.set_ylabel('Time Step')
             ax.xaxis.set_label_position('top')
-            ax.tick_params(axis='both', labelsize=8)
+            ax.tick_params(axis='both', labelsize=7)
             fig.subplots_adjust(top=0.85)
             ax.set_title(names[i], y=1.09)
             # plt.tight_layout()
