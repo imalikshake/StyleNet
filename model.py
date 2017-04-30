@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 matplotlib.pyplot.ioff()
 
 class GenreLSTM(object):
-    def __init__(self, dirs, mini=False, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=1, batch_count=16):
+    def __init__(self, dirs, mini=False, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=2, batch_count=8):
         self.input_size = int(input_size)
         self.output_size = int(output_size)
         self.num_layers = int(num_layers)
@@ -34,6 +34,12 @@ class GenreLSTM(object):
             self.j_cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
             self.j_cell_bw = tf.contrib.rnn.DropoutWrapper(self.j_cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
 
+            if self.num_layers > 1:
+                self.j_cell_fw = tf.contrib.rnn.MultiRNNCell([self.j_cell_fw]*self.num_layers)
+                self.j_cell_bw = tf.contrib.rnn.MultiRNNCell([self.j_cell_bw]*self.num_layers)
+
+
+
             # self.j_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
             (self.j_fw, self.j_bw) , _ = tf.nn.bidirectional_dynamic_rnn(
                                                         self.j_cell_fw,
@@ -54,6 +60,10 @@ class GenreLSTM(object):
 
             self.c_cell_bw = tf.contrib.rnn.LSTMBlockCell(self.input_size,forget_bias=1.0)
             self.c_cell_bw = tf.contrib.rnn.DropoutWrapper(self.c_cell_bw, input_keep_prob=self.input_keep_prob, output_keep_prob=self.output_keep_prob)
+
+            if self.num_layers > 1:
+                self.c_cell_fw  = tf.contrib.rnn.MultiRNNCell([self.c_cell_fw ]*self.num_layers)
+                self.c_cell_bw  = tf.contrib.rnn.MultiRNNCell([self.c_cell_bw ]*self.num_layers)
 
             (self.c_fw, self.c_bw), _ =  tf.nn.bidirectional_dynamic_rnn(
             # self.c_outputs, _ = tf.nn.bidirectional_dynamic_rnn(
@@ -167,7 +177,7 @@ class GenreLSTM(object):
 
         return opt.apply_gradients(gradients)
 
-    def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.5, output_keep_prob=0.5, learning_rate=0.0001, eval_epoch=10, save_epoch=1):
+    def train(self, data, model=None, starting_epoch=0, clip_grad=True, epochs=1001, input_keep_prob=0.8, output_keep_prob=0.8, learning_rate=0.001 , eval_epoch=10, save_epoch=1):
 
         self.data = data
 
@@ -248,7 +258,7 @@ class GenreLSTM(object):
 
                 self.train_writer.add_summary(classical_summary, epoch*classical_batcher.batch_count + epoch)
                 self.train_writer.add_summary(jazz_summary, epoch*jazz_batcher.batch_count + epoch)
-                self.validation(epoch)
+                # self.validation(epoch)
 
             print("[*] Average Training MSE for Classical epoch %d: %.9f" % (epoch, classical_epoch_avg/classical_batcher.batch_count))
             print("[*] Average Training MSE for Jazz epoch %d: %.9f" % (epoch, jazz_epoch_avg/jazz_batcher.batch_count))
@@ -258,10 +268,11 @@ class GenreLSTM(object):
                 self.save(epoch)
             if epoch % eval_epoch == 0 :
                 self.evaluate(epoch)
+                self.validation(epoch)
 
         print("[*] Training complete.")
 
-    def load(self, model_name, path=self.dirs['model_path']):
+    def load(self, model_name, path=None) :
         print(" [*] Loading checkpoint...")
         self.saver = tf.train.Saver(max_to_keep=0)
         self.saver.restore(self.sess, os.path.join(self.dirs['model_path'], model_name))
@@ -458,11 +469,11 @@ class GenreLSTM(object):
         fig = plt.figure(figsize=(14,11), dpi=120)
         fig.suptitle(filename, fontsize=10, fontweight='bold')
 
-        graph_items = [out_list[-1]*120, c_out[-1]*120, j_out[-1]*120,  (c_out[-1]-j_out[-1])*120 , e_out[-1]]
+        graph_items = [out_list[-1]*127, c_out[-1]*127, j_out[-1]*127,  (c_out[-1]-j_out[-1])*127 , e_out[-1]]
         plots = len(graph_items)
         cmap = ['jet', 'jet', 'jet', 'jet', 'bwr']
         vmin = [0,0,0,-10,-1]
-        vmax = [120,120,120,10,1]
+        vmax = [127,127,127,10,1]
         names = ["Actual", "Classical", "Jazz", "Difference", "Encoded"]
 
 
