@@ -147,7 +147,7 @@ def load_training_data(x_path, y_path, genre):
         X_data.append(loaded_x)
 
         loaded_y = np.load(abs_y_path)
-        loaded_y = loaded_y/120
+        loaded_y = loaded_y/127
         Y_data.append(loaded_y)
         assert X_data[i].shape[0] == Y_data[i].shape[0]
 
