@@ -13,6 +13,7 @@ DEBUG = False
 
 # The MIDI pitches we use.
 PITCHES = xrange(21,109,1)
+OFFSET = 109-21
 PITCHES_MAP = { p : i for i, p in enumerate(PITCHES) }
 print len(PITCHES)
 
@@ -477,7 +478,8 @@ def stylify_track(mid, velocity_array, quantization):
     num_steps = int(round(track_len_ticks / float(ticks_per_quarter)*2**quantization/4))
     normalized_num_steps = nearest_pow2(num_steps)
     # notes.sort(key=lambda (position, note_type, note_num, velocity):(position,-velocity))
-
+    vels = []
+    # vels2 = []
     for msg in track[first_note_msg_idx:]:
         if hasattr(msg, 'time') and hasattr(msg, 'velocity'):
             if msg.velocity != 0:
@@ -486,9 +488,56 @@ def stylify_track(mid, velocity_array, quantization):
                     pos = pos - 1
                 if pos > normalized_num_steps:
                     continue
+
                 vel = velocity_array[pos, PITCHES_MAP[msg.note]]
-                vel = max(0.1, vel)
-                vel = vel*120*2
+                if vel > 0:
+                    vels.append(vel)
+    #             if vel*127 <= 1:
+    #                 vels.append(vel)
+    #             else:
+    #                 vels2.append(vel)
+    # maxv = max(vels)
+    low = min(vels)
+    # if vels2:
+    #     minv = min(vels2)
+    # else:
+    #     minv = 2
+    # plt.hist(vels,bins=range(0,128))
+    # plt.xlabel("Number of Velocites in a Song")
+    # plt.ylabel("Frequency")
+    # plt.show()
+    print low
+    for msg in track[first_note_msg_idx:]:
+        if hasattr(msg, 'time') and hasattr(msg, 'velocity'):
+            if msg.velocity != 0:
+                pos = msg.time * (2**quantization/4) / (ticks_per_quarter)
+                if pos == normalized_num_steps:
+                    pos = pos - 1
+                if pos > normalized_num_steps:
+                    continue
+
+                vel = velocity_array[pos, PITCHES_MAP[msg.note]]
+                # if vel > 2*maxv:
+                #     vel = 2*maxv
+                vel = vel*127
+                # vel += 10/12
+                # # vel = max(vel, max(low*127,0.157))
+                #
+                # # vel = max(1, vel)
+                # #
+                # # vel = vel*127
+                # #
+                # print vel
+                vel = vel * 60
+
+                vel = max(40, vel)
+                vel = min(vel, 120)
+                # # vel = min(vel, 1)
+                # # # vel = 60 + (base*67)
+                # # vel = vel*127
+                # #
+                #
+                print vel
                 msg.velocity = int(round(vel))
 
     return track

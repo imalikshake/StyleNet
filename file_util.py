@@ -338,7 +338,7 @@ def create_final_midi(path):
 # validate_data("../../midi/live_formatted", 4)
 # validate_data("./midi/formatted_valid", 4)
 # quantize_data("../../midi/classical", 4)
-save_data("../../midi/classical_quantized", 4, one_hot=True)
+# save_data("../../midi/classical_quantized", 4, one_hot=True)
 
 # x, y = load_data("./midi/formatted_valid_quantized")
 #
