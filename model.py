@@ -264,12 +264,14 @@ class GenreLSTM(object):
             print("[*] Average Training MSE for Jazz epoch %d: %.9f" % (epoch, jazz_epoch_avg/jazz_batcher.batch_count))
 
             if epoch % val_epoch == 0 :
+                print("[*] Validating model...")
                 self.validation(epoch)
 
             if epoch % save_epoch == 0 :
                 self.save(epoch)
 
             if epoch % eval_epoch == 0 :
+                print("[*] Evaluating model...")
                 self.evaluate(epoch)
 
         print("[*] Training complete.")
