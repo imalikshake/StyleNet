@@ -277,7 +277,11 @@ class GenreLSTM(object):
     def load(self, model_name, path=None) :
         print(" [*] Loading checkpoint...")
         self.saver = tf.train.Saver(max_to_keep=0)
-        self.saver.restore(self.sess, os.path.join(self.dirs['model_path'], model_name))
+        if not path:
+            self.saver.restore(self.sess, os.path.join(self.dirs['model_path'], model_name))
+        else:
+            self.sess = tf.Session()
+            self.saver.restore(self.sess, path)
 
     def save(self, epoch):
         print("[*] Saving checkpoint...")
@@ -285,6 +289,29 @@ class GenreLSTM(object):
         self.saver = tf.train.Saver(max_to_keep=0)
         save_path = self.saver.save(self.sess, os.path.join(self.dirs['model_path'], model_name))
         print("[*] Model saved in file: %s" % save_path)
+
+    def predict(self, input_path, output_path):
+        in_list = []
+        out_list = []
+        filenames = []
+        input_lens = []
+
+        loaded = np.load(input_path)
+        true_vel = np.load(output_path)/127
+
+        in_list.append(loaded)
+        out_list.append(true_vel)
+
+        input_len = [len(loaded)]
+
+        c_error, c_out, j_out, e_out = self.sess.run([self.classical_loss, self.classical_linear_out, self.jazz_linear_out, self.enc_outputs], feed_dict={self.inputs:in_list,
+                                                                                                                                                            self.seq_len:input_len,
+                                                                                                                                                            self.input_keep_prob:1.0,
+                                                                                                                                                            self.output_keep_prob:1.0,
+                                                                                                                                                            self.true_classical_outputs:out_list,
+                                                                                                                                                            self.true_jazz_outputs:out_list})
+
+        return c_error, c_out, j_out, e_out, out_list
 
     def validate(self, type):
         '''Handles validation set data'''
@@ -318,7 +345,7 @@ class GenreLSTM(object):
                 vel_path = os.path.join(vel_eval_path, filename)
                 input_path = os.path.join(input_eval_path, filename)
 
-                true_vel = np.load(vel_path)/120
+                true_vel = np.load(vel_path)/127
                 loaded = np.load(input_path)
 
                 if not self.one_hot:
@@ -470,7 +497,7 @@ class GenreLSTM(object):
                 #     np.save(predicted, linear[-1])
 
 
-    def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list):
+    def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list, path=None):
         '''Plotting/Saving training session graphs
         epoch -- epoch number
         c_out -- classical output
@@ -513,6 +540,14 @@ class GenreLSTM(object):
         else:
             plt.xlim(0,128)
 
-        out_png = os.path.join(self.dirs['png_path'], filename.split('.')[0] + "-e%d" % (epoch)+".png")
-        plt.savefig(out_png, bbox_inches='tight')
-        plt.close(fig)
+        #Don't show the figure and save it
+        if not path:
+            out_png = os.path.join(self.dirs['png_path'], filename.split('.')[0] + "-e%d" % (epoch)+".png")
+            plt.savefig(out_png, bbox_inches='tight')
+            plt.close(fig)
+        else:
+            # out_png = os.path.join(self.dirs['png_path'], filename.split('.')[0] + "-e%d" % (epoch)+".png")
+            # plt.savefig(out_png, bbox_inches='tight')
+            # plt.close(fig)
+            plt.show()
+            plt.close(fig)
