@@ -21,7 +21,7 @@ Flags:
 `-data_dir` : Directory of datasets.  
 `-data_set` : Dataset name.  
 `-runs_dir` : Directory of session files.  
-`-forward_only` : For making predictions (not training).
+`-forward_only` : For making predictions (not training).  
 `-bi` : If you wish to use bi-directional LSTMs. (HIGHLY recommended)
 
 
