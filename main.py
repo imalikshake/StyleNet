@@ -44,11 +44,6 @@ parser.add_argument(
     help="True for mini batches.",
     action='store_true'
 )
-parser.add_argument(
-    "-one_hot",
-    help="False for float input [False]",
-    action='store_true'
-)
 
 parser.add_argument(
     "-forward_only",
@@ -141,10 +136,6 @@ def load_training_data(x_path, y_path, genre):
         abs_y_path = os.path.join(y_path,filename)
         loaded_x = np.load(abs_x_path)
 
-        if not args.one_hot:
-            print "NOT ONE HOT!"
-            loaded_x = loaded_x/2
-        # clipped = loaded[:128]
         X_data.append(loaded_x)
 
         loaded_y = np.load(abs_y_path)
