@@ -1,6 +1,16 @@
 import numpy as np
 
 class BatchGenerator(object):
+    '''Generator for returning shuffled batches.
+
+    data_x -- list of input matrices
+    data_y -- list of output matrices
+    batch_size -- size of batch
+    input_size -- input width
+    output_size -- output width
+    mini -- create subsequences for truncating backprop
+    mini_len -- truncated backprop window'''
+
     def __init__(self, data_x, data_y, batch_size, input_size, output_size, mini=True, mini_len=200):
         self.input_size = input_size
         self.output_size = output_size

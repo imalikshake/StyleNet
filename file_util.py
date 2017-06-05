@@ -3,7 +3,6 @@ import numpy as np
 from mido import MidiFile
 from midi_util import *
 
-#Takes ORIGINAL path
 def validate_data(path, quant):
     '''Creates a folder containing valid MIDI files.
 
@@ -98,12 +97,11 @@ def quantize_data(path, quant):
 
     print 'Processed {} files out of {}'.format(processed_count, total_file_count)
 
-#Takes QUANT path
 def save_data(path, quant, one_hot=True):
         '''Creates a folder containing the quantised MIDI files.
 
         Arguments:
-        path -- Validated directory containing midis.
+        path -- Quantised directory containing midis.
         quant -- Level of quantisation'''
 
     path_prefix, path_suffix = os.path.split(path)
@@ -164,8 +162,13 @@ def save_data(path, quant, one_hot=True):
                 processed_count += 1
     print '\nProcessed {} files out of {}'.format(processed_count, total_file_count)
 
-#Takes QUANT path
 def load_data(path):
+    '''Returns lists of input and output numpy matrices.
+
+    Arguments:
+    path -- Quantised directory path.
+    quant -- Level of quantisation'''
+
     names = []
     X_list = []
     Y_list = []
@@ -197,152 +200,3 @@ def load_data(path):
 
 
     return X_list, Y_list
-
-def merge_results(orignal_path, quant_path, pred_path):
-
-    path_prefix, path_suffix = os.path.split(orignal_path)
-
-    # Handle case where a trailing / requires two splits.
-    if len(path_suffix) == 0:
-        path_prefix, path_suffix = os.path.split(path_prefix)
-
-    file_names = []
-    mids = []
-    quant_mids = []
-    velocities = []
-
-    for root, dirs, files in os.walk(orignal_path):
-        for file in files:
-            if file.split('.')[-1] == 'mid' or file.split('.')[-1] == 'MID':
-                midi_path = os.path.join(root, file)
-                mid_file = MidiFile(midi_path)
-                file_names.append(file)
-                mids.append(mid_file)
-
-    for root, dirs, files in os.walk(quant_path):
-        for file in files:
-            if file.split('.')[-1] == 'mid' or file.split('.')[-1] == 'MID':
-                midi_path = os.path.join(root, file)
-                mid_file = MidiFile(midi_path)
-                quant_mids.append(mid_file)
-
-    for root, dirs, files in os.walk(pred_path):
-        for file in files:
-            if file.split('.')[-1] == 'npy':
-                vel_path = os.path.join(root, file)
-                loaded = np.array(np.load(vel_path))
-                velocities.append(loaded)
-
-    styled_mids = []
-    for i, file in enumerate(quant_mids):
-        style_mid = stylify(file, velocities[i])
-        styled_mids.append(style_mid)
-
-    styled_out = os.path.join(path_prefix, path_suffix+"_styled_qmidi")
-
-    if not os.path.exists(styled_out):
-        os.makedirs(styled_out)
-
-    for i, file in enumerate(styled_mids):
-        out_file = os.path.join(styled_out, file_names[i])
-        file.save(out_file)
-
-    final_mids = []
-
-    for i, file in enumerate(mids):
-        final_mid = unquantize(file, styled_mids[i])
-        final_mids.append(final_mid)
-
-    final_out = os.path.join(path_prefix, path_suffix+"_final_midi")
-
-    if not os.path.exists(final_out):
-        os.makedirs(final_out)
-
-    for i, file in enumerate(final_mids):
-        out_file = os.path.join(final_out, file_names[i])
-        file.save(out_file)
-
-def create_final_midi(path):
-
-    file_names = []
-    mids = []
-    quant_mids = []
-
-    path_prefix, path_suffix = os.path.split(path)
-
-    # Handle case where a trailing / requires two splits.
-    if len(path_suffix) == 0:
-        path_prefix, path_suffix = os.path.split(path_prefix)
-
-    quant_path = os.path.join(path_prefix, path_suffix+"_quantized")
-
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.split('.')[-1] == 'mid' or file.split('.')[-1] == 'MID':
-                midi_path = os.path.join(root, file)
-                mid_file = MidiFile(midi_path)
-                file_names.append(file)
-                mids.append(mid_file)
-
-    for root, dirs, files in os.walk(quant_path):
-        for file in files:
-            if file.split('.')[-1] == 'mid' or file.split('.')[-1] == 'MID':
-                midi_path = os.path.join(root, file)
-                mid_file = MidiFile(midi_path)
-                quant_mids.append(mid_file)
-
-    scrubbed_mids = []
-    for file in quant_mids:
-        scrub_mid = scrub(file,10)
-        scrubbed_mids.append(scrub_mid)
-
-    scrubbed_orig_mids = []
-    for file in mids:
-        scrub_mid = scrub(file,10)
-        scrubbed_orig_mids.append(scrub_mid)
-
-    scrubbed_out = os.path.join(path_prefix, path_suffix+"_clean_midi")
-
-    if not os.path.exists(scrubbed_out):
-        os.makedirs(scrubbed_out)
-    #
-    for i, file in enumerate(scrubbed_orig_mids):
-        out_file = os.path.join(scrubbed_out, file_names[i])
-        file.save(out_file)
-
-    print "Bad MIDI. Header not found."
-
-    _ , velocities = load_data(quant_path)
-
-    styled_mids = []
-    print velocities
-    for i, file in enumerate(scrubbed_mids):
-        print "Styling"
-        print velocities[i]
-        style_mid = stylify(file, velocities[i])
-        styled_mids.append(style_mid)
-
-
-    styled_out = os.path.join(path_prefix, path_suffix+"_styled_q_midi")
-
-    if not os.path.exists(styled_out):
-        os.makedirs(styled_out)
-
-    for i, file in enumerate(styled_mids):
-        out_file = os.path.join(styled_out, file_names[i])
-        file.save(out_file)
-
-    final_mids = []
-
-    for i, file in enumerate(scrubbed_orig_mids):
-        final_mid = unquantize(file, styled_mids[i])
-        final_mids.append(final_mid)
-
-    final_out = os.path.join(path_prefix, path_suffix+"_final_midi")
-
-    if not os.path.exists(final_out):
-        os.makedirs(final_out)
-
-    for i, file in enumerate(final_mids):
-        out_file = os.path.join(final_out, file_names[i])
-        file.save(out_file)

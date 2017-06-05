@@ -36,12 +36,12 @@ parser.add_argument(
 
 parser.add_argument(
     "-bi",
-    help="False for Unidirectional [False]",
+    help="True for bidirectional",
     action='store_true'
 )
 parser.add_argument(
     "-mini",
-    help="False for Unidirectional [False]",
+    help="True for mini batches.",
     action='store_true'
 )
 parser.add_argument(
@@ -60,13 +60,13 @@ parser.add_argument(
     "-load_model",
     type=str,
     default=None,
-    help="Model to load"
+    help="Folder name of model to load"
 )
 
 parser.add_argument(
     "-load_last",
     action='store_true',
-    help="True for forward only, False for training [False]"
+    help="Start from last epoch"
 )
 
 args = parser.parse_args()
@@ -140,6 +140,7 @@ def load_training_data(x_path, y_path, genre):
         abs_x_path = os.path.join(x_path,filename)
         abs_y_path = os.path.join(y_path,filename)
         loaded_x = np.load(abs_x_path)
+
         if not args.one_hot:
             print "NOT ONE HOT!"
             loaded_x = loaded_x/2
@@ -154,19 +155,11 @@ def load_training_data(x_path, y_path, genre):
 
     return X_data, Y_data
 
-def load_eval_data(x_path, y_path, genre):
-    pass
-
-
-
-def main():
-    tf.logging.set_verbosity(tf.logging.ERROR)
-
+def prepare_data():
     dirs = setup_dir()
     data = {}
     data["classical"] = {}
     data["jazz"] = {}
-
 
     c_train_X , c_train_Y = load_training_data(dirs['x_path'], dirs['y_path'], "classical")
 
@@ -177,15 +170,15 @@ def main():
 
     data["jazz"]["X"] = j_train_X
     data["jazz"]["Y"] = j_train_Y
+    return data
 
-    if args.one_hot:
-        input_size = 176
-    else:
-        input_size = 128
+def main():
+    tf.logging.set_verbosity(tf.logging.ERROR)
 
-    network  = GenreLSTM(dirs, input_size=input_size, mini=args.mini, bi=args.bi)
+    data = prepare_data()
+
+    network  = GenreLSTM(dirs, input_size=176, mini=args.mini, bi=args.bi)
     network.prepare_model()
-
 
     if not args.forward_only:
         if args.load_model:
