@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     "-data_set",
     type=str,
-    default="train2",
+    default="test",
     help="The name of training dataset"
 )
 
@@ -161,12 +161,12 @@ def prepare_data():
 
     data["jazz"]["X"] = j_train_X
     data["jazz"]["Y"] = j_train_Y
-    return data
+    return dirs, data
 
 def main():
     tf.logging.set_verbosity(tf.logging.ERROR)
 
-    data = prepare_data()
+    dirs, data = prepare_data()
 
     network  = GenreLSTM(dirs, input_size=176, mini=args.mini, bi=args.bi)
     network.prepare_model()
@@ -184,7 +184,7 @@ def main():
             tree.remove('checkpoint')
             files = [(int(file.split('.')[0].split('-')[-1][1:]), file.split('.')[0]) for file in tree]
             files.sort(key = lambda t: t[0])
-            print files
+            # print files
             last = files[-1][1]
             last = last + ".ckpt"
             loaded_epoch = files[-1][0]
