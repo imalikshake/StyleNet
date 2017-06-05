@@ -16,12 +16,12 @@ You will need a few things in order to get started.
 ``` python main.py -current_run <name-of-session> -bi ```
 
 Flags:  
-`-load_last` : Loads and continues from last epoch.
-`-load_model`: Loads specified model.
-`-data_dir` : Directory of datasets.
-`-data_set` : Dataset name.
-`-runs_dir` : Directory of session files.
-`-forward_only` : For making predictions (not training).
+`-load_last` : Loads and continues from last epoch.  
+`-load_model`: Loads specified model.  
+`-data_dir` : Directory of datasets.  
+`-data_set` : Dataset name.  
+`-runs_dir` : Directory of session files.  
+`-forward_only` : For making predictions (not training).  
 
 
 
