@@ -39,11 +39,6 @@ parser.add_argument(
     help="True for bidirectional",
     action='store_true'
 )
-parser.add_argument(
-    "-mini",
-    help="True for mini batches.",
-    action='store_true'
-)
 
 parser.add_argument(
     "-forward_only",
@@ -168,7 +163,7 @@ def main():
 
     dirs, data = prepare_data()
 
-    network  = GenreLSTM(dirs, input_size=176, mini=args.mini, bi=args.bi)
+    network  = GenreLSTM(dirs, input_size=176, mini=True, bi=args.bi)
     network.prepare_model()
 
     if not args.forward_only:
