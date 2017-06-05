@@ -5,22 +5,21 @@ from mido import MidiFile
 from midi_util import velocity_range, quantize
 from random import shuffle
 
-mid_path = '/Users/Iman/research/midi/jazz_format0'
+mid_path = '/Users/Iman/Desktop/models/predict/original/jazz'
 # train_path = './midi/evaluation_train'
 # test_path = './midi/evaluation_test'
-out_path = '/Users/Iman/research/midi/jazz_final'
-
-if not os.path.exists(out_path):
-    os.makedirs(out_path)
+out_path = '/Users/Iman/Desktop/models/predict/original/jazz'
+# if not os.path.exists(out_path):
+    # os.makedirs(out_path)
 # if not os.path.exists(test_path):
 #     os.makedirs(test_path)
 
 total = len(os.listdir(mid_path))
-vels = []
-idx = range(0,total)
-shuffle(idx)
-test = int(round(total*10/100))
-idx = idx[:test]
+# vels = []
+# idx = range(0,total)
+# shuffle(idx)
+# test = int(round(total*10/100))
+# idx = idx[:test]
 # print idx
 
 for i , filename in enumerate(os.listdir(mid_path)):
@@ -34,8 +33,8 @@ for i , filename in enumerate(os.listdir(mid_path)):
 
         print "%d / %d" % (i,total)
         try:
-            # midi_data = pretty_midi.PrettyMIDI(os.path.join(mid_path, filename))
-            mid = MidiFile(os.path.join(mid_path, filename))
+            midi_data = pretty_midi.PrettyMIDI(os.path.join(mid_path, filename))
+            # mid = MidiFile(os.path.join(mid_path, filename))
         except (KeyError, IOError, IndexError, EOFError, ValueError):
             print "NAUGHTY"
             continue
@@ -60,19 +59,20 @@ for i , filename in enumerate(os.listdir(mid_path)):
 
         # midi_data.write(os.path.join(out_path, filename))
         # print velocity_range(mid)
-        vels.append(velocity_range(mid))
-        if velocity_range(mid) >= 20:
-            mid.save(os.path.join(out_path, filename))
-        # piano = [instrument for instrument in midi_data.instruments if instrument.program < 8 ]
-        # piano = [instrument for instrument in piano if not instrument.is_drum ]
+        # vels.append(velocity_range(mid))
+        # if velocity_range(mid) >= 20:
+            # mid.save(os.path.join(out_path, filename))
+        piano = [instrument for instrument in midi_data.instruments if instrument.program < 8 ]
+        piano = [instrument for instrument in piano if not instrument.is_drum ]
         # # #
         # if len(piano) > 0 and len(piano) < 3:
-        #     for x in piano:
-        #         x.program = 0
-        #     midi_data.instruments = piano
+        for x in piano:
+            x.program = 0
+
+        midi_data.instruments = piano
         #     print filename + "\t" + str(len(piano))
-        #     midi_data.write(os.path.join(out_path, filename))
-        # # # mid.save(os.path.join(out_path, filename))
+        midi_data.write(os.path.join(out_path, filename))
+        # mid.save(os.path.join(out_path, filename))
         # else:
         #     print '\tNO piano.'
         #     # print filename + "\t" + str(len(piano))

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 matplotlib.pyplot.ioff()
 
 class GenreLSTM(object):
-    def __init__(self, dirs, mini=False, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=2, batch_count=8):
+    def __init__(self, dirs, mini=False, bi=False, one_hot=True, input_size=176, output_size=88, num_layers=3, batch_count=8):
         self.input_size = int(input_size)
         self.output_size = int(output_size)
         self.num_layers = int(num_layers)
@@ -17,7 +17,6 @@ class GenreLSTM(object):
         self.bi = bi
         self.mini = mini
         self.one_hot = one_hot
-
 
     def prepare_bidiretional(self, glorot=True):
         print("[*] Preparing bidirectional dynamic RNN...")
@@ -294,14 +293,8 @@ class GenreLSTM(object):
         filenames = []
         input_lens = []
 
-
-
-
         loaded = np.load(input_path)
-        true_vel = np.load(output_path)/120
-
-        if not self.one_hot:
-            loaded = loaded/2
+        true_vel = np.load(output_path)/127
 
         in_list.append(loaded)
         out_list.append(true_vel)
@@ -316,9 +309,6 @@ class GenreLSTM(object):
                                                                                                                                                             self.true_jazz_outputs:out_list})
 
         return c_error, c_out, j_out, e_out, out_list
-
-
-            # self.plot_evaluation(epoch, predict_path.split("/")[-1], c_out, j_out, e_out, out_list)
 
     def validate(self, type):
         input_eval_path = os.path.join(self.dirs['eval_path'], "inputs")
@@ -345,13 +335,14 @@ class GenreLSTM(object):
         in_list = []
         out_list = []
         filenames = []
+
         for i, filename in enumerate(input_folder):
             if filename.split('.')[-1] == 'npy':
 
                 vel_path = os.path.join(vel_eval_path, filename)
                 input_path = os.path.join(input_eval_path, filename)
 
-                true_vel = np.load(vel_path)/120
+                true_vel = np.load(vel_path)/127
                 loaded = np.load(input_path)
 
                 if not self.one_hot:
@@ -446,7 +437,7 @@ class GenreLSTM(object):
                 vel_path = os.path.join(vel_eval_path, filename)
                 input_path = os.path.join(input_eval_path, filename)
 
-                true_vel = np.load(vel_path)/120
+                true_vel = np.load(vel_path)/127
                 loaded = np.load(input_path)
 
                 if not self.one_hot:
@@ -499,7 +490,6 @@ class GenreLSTM(object):
                 # if pred_save:
                 #     predicted = os.path.join(self.dirs['pred_path'], filename.split('.')[0] + "-e%d" % (epoch)+".npy")
                 #     np.save(predicted, linear[-1])
-
 
     def plot_evaluation(self, epoch, filename, c_out, j_out, e_out, out_list, path=None):
         fig = plt.figure(figsize=(14,11), dpi=120)

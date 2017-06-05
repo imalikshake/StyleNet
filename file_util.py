@@ -5,6 +5,12 @@ from midi_util import *
 
 #Takes ORIGINAL path
 def validate_data(path, quant):
+    '''Creates a folder containing valid MIDI files.
+
+    Arguments:
+    path -- Original directory containing untouched midis.
+    quant -- Level of quantisation'''
+
     path_prefix, path_suffix = os.path.split(path)
 
     # Handle case where a trailing / requires two splits.
@@ -55,8 +61,13 @@ def validate_data(path, quant):
 
     print '\nProcessed {} files out of {}'.format(processed_count, total_file_count)
 
-#Takes VALID path
 def quantize_data(path, quant):
+    '''Creates a folder containing the quantised MIDI files.
+
+    Arguments:
+    path -- Validated directory containing midis.
+    quant -- Level of quantisation'''
+
     path_prefix, path_suffix = os.path.split(path)
 
     if len(path_suffix) == 0:
@@ -88,7 +99,13 @@ def quantize_data(path, quant):
     print 'Processed {} files out of {}'.format(processed_count, total_file_count)
 
 #Takes QUANT path
-def save_data(path, quant, one_hot=False):
+def save_data(path, quant, one_hot=True):
+        '''Creates a folder containing the quantised MIDI files.
+
+        Arguments:
+        path -- Validated directory containing midis.
+        quant -- Level of quantisation'''
+
     path_prefix, path_suffix = os.path.split(path)
 
     # Handle case where a trailing / requires two splits.
@@ -329,26 +346,3 @@ def create_final_midi(path):
     for i, file in enumerate(final_mids):
         out_file = os.path.join(final_out, file_names[i])
         file.save(out_file)
-
-
-# save_data("./midi/evaluation_train_quantized", 4)
-# save_data("./midi/evaluation_test_quantized", 4)
-
-# create_final_midi("/Users/Iman/research/programs/style/midi/formatted_valid")
-# validate_data("../../midi/live_formatted", 4)
-# validate_data("./midi/formatted_valid", 4)
-# quantize_data("../../midi/classical", 4)
-# save_data("../../midi/classical_quantized", 4, one_hot=True)
-
-# x, y = load_data("./midi/formatted_valid_quantized")
-#
-# import matplotlib.pyplot as plt
-#
-# fig = plt.figure()
-#
-# fig.add_subplot(2,2,1)
-# plt.imshow(x[-3])
-#
-# fig.add_subplot(2,2,2)
-# plt.imshow(y[-3])
-# plt.show()
