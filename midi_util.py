@@ -7,7 +7,7 @@ import pretty_midi
 import mido
 from mido import MidiFile, MidiTrack, Message, MetaMessage
 import numpy as np
-
+import random
 
 DEBUG = False
 
@@ -510,7 +510,7 @@ def stylify_track(mid, velocity_array, quantization):
 
     return track
 
-def scrub(mid, velocity=10):
+def scrub(mid, velocity=10, random=False):
     '''Returns a midi object with one global velocity.
 
     Sets all velocities to a contant.
@@ -522,11 +522,14 @@ def scrub(mid, velocity=10):
     # By convention, Track 0 contains metadata and Track 1 contains
     # the note on and note off events.
     note_track_idx, note_track = get_note_track(mid)
-    new_track = scrub_track(note_track,velocity)
+    if random:
+        new_track = scrub_track_random(note_track)
+    else:
+        new_track = scrub_track(note_track,velocity=10)
     scrubbed_mid.tracks[note_track_idx] = new_track
     return scrubbed_mid
 
-def scrub_track(track, velocity):
+def scrub_track_random(track):
 
     first_note_msg_idx = None
 
@@ -539,7 +542,7 @@ def scrub_track(track, velocity):
 
     for msg in note_msgs:
          if msg.type == 'note_on' and msg.velocity > 0:
-             msg.velocity = 10
+             msg.velocity = random.randint(0,127)
 
     return track
 
