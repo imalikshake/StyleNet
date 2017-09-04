@@ -1,5 +1,10 @@
 # StyleNet
-A cute multi-layer LSTM network that can perform like a human 🎶 It learns the dynamics of music! If you wish to learn more about my findings, then please read my [blog post](http://imanmalik.com/cs/2017/06/05/neural-style.html). The architecture was specifically designed to handle music of different genres.
+
+A cute multi-layer LSTM network that can perform like a human 🎶 It learns the dynamics of music! The architecture was specifically designed to handle music of different genres.
+
+If you wish to learn more about my findings, then please read my [blog post](http://imanmalik.com/cs/2017/06/05/neural-style.html) and paper:
+
+> **Iman Malik, Carl Henrik Ek, [*"Neural Translation of Musical Style"*](https://arxiv.org/abs/1708.03535), 2017.**
 
 ![GitHub Logo](http://imanmalik.com/assets/img/stylenet.png)
 
@@ -12,6 +17,11 @@ You will need a few things in order to get started.
 2. mido
 3. pretty_midi
 4. fluidsynth
+
+## The Piano Dataset
+I created my own dataset for the model. If you wish to use the Piano Dataset 🎹 for academic purposes, you can download it from [here.](/assets/dataset/TPD.zip) The Piano Dataset is distributed with a [CC-BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). If you use this dataset, please reference this [paper](https://arxiv.org/abs/1708.03535):
+
+  
 
 ## How to Run
 ``` python main.py -current_run <name-of-session> -bi ```
