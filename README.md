@@ -19,7 +19,7 @@ You will need a few things in order to get started.
 4. fluidsynth
 
 ## The Piano Dataset
-I created my own dataset for the model. If you wish to use the Piano Dataset 🎹 for academic purposes, you can download it from [here.](/assets/dataset/TPD.zip) The Piano Dataset is distributed with a [CC-BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). If you use this dataset, please reference this [paper](https://arxiv.org/abs/1708.03535):
+I created my own dataset for the model. If you wish to use the Piano Dataset 🎹 for academic purposes, you can download it from [here.](http://imanmalik.com/assets/dataset/TPD.zip) The Piano Dataset is distributed with a [CC-BY 4.0 license](https://creativecommons.org/licenses/by/4.0/). If you use this dataset, please reference this [paper](https://arxiv.org/abs/1708.03535):
 
   
 
